@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, RISE SICS
+ * Copyright (c) 2010, Swedish Institute of Computer Science.
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -26,32 +26,49 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * This file is part of the Contiki operating system.
- *
  */
 
-#include "contiki.h"
+/**
+ * \file
+ *         A simple webserver
+ * \author
+ *         Adam Dunkels <adam@sics.se>
+ *         Niclas Finne <nfi@sics.se>
+ *         Joakim Eriksson <joakime@sics.se>
+ */
 
-/* Log configuration */
-#include "sys/log.h"
-#define LOG_MODULE "RPL BR"
-#define LOG_LEVEL LOG_LEVEL_INFO
+#ifndef HTTPD_SIMPLE_H_
+#define HTTPD_SIMPLE_H_
 
-/* Declare and auto-start this file's process */
-PROCESS(contiki_ng_br, "Contiki-NG Border Router");
-AUTOSTART_PROCESSES(&contiki_ng_br);
+#include "contiki-net.h"
 
-/*---------------------------------------------------------------------------*/
-PROCESS_THREAD(contiki_ng_br, ev, data)
-{
-  PROCESS_BEGIN();
-  NETSTACK_ROUTING.root_start();
-#if BORDER_ROUTER_CONF_WEBSERVER
-  PROCESS_NAME(webserver_nogui_process);
-  process_start(&webserver_nogui_process, NULL);
-#endif /* BORDER_ROUTER_CONF_WEBSERVER */
+/* The current internal border router webserver ignores the requested file name */
+/* and needs no per-connection output buffer, so save some RAM */
+#ifndef WEBSERVER_CONF_CFS_PATHLEN
+#define HTTPD_PATHLEN 16
+#else /* WEBSERVER_CONF_CFS_CONNS */
+#define HTTPD_PATHLEN WEBSERVER_CONF_CFS_PATHLEN
+#endif /* WEBSERVER_CONF_CFS_CONNS */
 
-  LOG_INFO("Contiki-NG Border Router started\n");
+struct httpd_state;
+typedef char (*httpd_simple_script_t)(struct httpd_state *s);
 
-  PROCESS_END();
-}
+struct httpd_state {
+  struct timer timer;
+  struct psock sin, sout;
+  struct pt outputpt;
+  char inputbuf[HTTPD_PATHLEN + 24];
+/*char outputbuf[UIP_TCP_MSS]; */
+  char filename[HTTPD_PATHLEN];
+  httpd_simple_script_t script;
+  char state;
+};
+
+void httpd_init(void);
+void httpd_appcall(void *state);
+
+httpd_simple_script_t httpd_simple_get_script(const char *name);
+
+#define SEND_STRING(s, str) PSOCK_SEND(s, (uint8_t *)str, strlen(str))
+
+#endif /* HTTPD_SIMPLE_H_ */

@@ -22,15 +22,14 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-#include "sys/log.h"
-#define LOG_MODULE "App"
-#define LOG_LEVEL LOG_LEVEL_INFO
-
 #define WITH_SERVER_REPLY  1
 #define UDP_CLIENT_PORT	8765
 #define UDP_SERVER_PORT	5678
 
 #define SEND_INTERVAL		  (10 * CLOCK_SECOND)
+#include "sys/log.h"
+#define LOG_MODULE "App"
+#define LOG_LEVEL LOG_LEVEL_INFO
 
 static struct simple_udp_connection udp_conn;
 static uint32_t rx_count = 0;
@@ -61,6 +60,7 @@ udp_rx_callback(struct simple_udp_connection *c,
 PROCESS_THREAD(udp_client_process, ev, data)
 {
   static struct etimer periodic_timer;
+  static char str[32];
   uip_ipaddr_t dest_ipaddr;
   static uint32_t tx_count;
   static uint32_t missed_tx_count;
@@ -72,6 +72,7 @@ PROCESS_THREAD(udp_client_process, ev, data)
                       UDP_SERVER_PORT, udp_rx_callback);
 
   etimer_set(&periodic_timer, random_rand() % SEND_INTERVAL);
+  uip_ip6addr(hard_addr,0xfd00,0,0,0,0x212,0x4b00,0xaff,0xd385);
   while(1) {
     PROCESS_WAIT_EVENT_UNTIL(etimer_expired(&periodic_timer));
 
@@ -83,25 +84,32 @@ PROCESS_THREAD(udp_client_process, ev, data)
         LOG_INFO("Tx/Rx/MissedTx: %" PRIu32 "/%" PRIu32 "/%" PRIu32 "\n",
                  tx_count, rx_count, missed_tx_count);
       }
-    cc26xx_uart_set_input(serial_line_input_byte); 
-    char buf[15];
-     for (;;){
-          PROCESS_YIELD();
-      if (ev == serial_line_event_message)
+      cc26xx_uart_set_input(serial_line_input_byte);
+for (;;){
+  PROCESS_YIELD();
+  if (ev == serial_line_event_message)
   {
     printf("received line: %s\n",(char *)data);
-    sprintf(buf,"%s", (char *)data);
-    printf("%s",buf);
-    simple_udp_sendto(&udp_conn, buf, strlen(buf), &dest_ipaddr);
-  }
+          /* Send to DAG root */
+      LOG_INFO("Sending request %"PRIu32" to ", tx_count);
+      LOG_INFO_6ADDR(&dest_ipaddr);
+      LOG_INFO_("\n");
+      snprintf(str, sizeof(str), "%" PRIu32 " %s", tx_count, (char *)data);
+      printf("%s",str);
+      simple_udp_sendto(&udp_conn, str, strlen(str), &hard_addr);
       tx_count++;
-  
-    }} else {
+  }
+    }  
+
+    } else {
       LOG_INFO("Not reachable yet\n");
       if(tx_count > 0) {
         missed_tx_count++;
       }
     }
+
+    /* Add some jitter */
+    etimer_set(&periodic_timer, 10 * CLOCK_SECOND);
   }
   
 

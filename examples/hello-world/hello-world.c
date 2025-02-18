@@ -38,29 +38,38 @@
  */
 
 #include "contiki.h"
+#include "sys/process.h"
+#include "dev/serial-line.h"
+#include "dev/cc26xx-uart.h"
+#include "net/ipv6/uip.h"
+#include "net/ipv6/uip-udp-packet.h"
+#include "net/ipv6/uiplib.h"
+#include "sys/cc.h"
 
-#include <stdio.h> /* For printf() */
+#include "ti-lib.h"
+
+#include <stdint.h>
+#include <string.h>
+#include <strings.h>
+#include <stdio.h>
+#include <stdlib.h>
+
 /*---------------------------------------------------------------------------*/
 PROCESS(hello_world_process, "Hello world process");
 AUTOSTART_PROCESSES(&hello_world_process);
 /*---------------------------------------------------------------------------*/
 PROCESS_THREAD(hello_world_process, ev, data)
 {
-  static struct etimer timer;
-
   PROCESS_BEGIN();
-
-  /* Setup a periodic timer that expires after 10 seconds. */
-  etimer_set(&timer, CLOCK_SECOND * 10);
-
-  while(1) {
-    printf("Hello, world\n");
-
-    /* Wait for the periodic timer to expire and then restart the timer. */
-    PROCESS_WAIT_EVENT_UNTIL(etimer_expired(&timer));
-    etimer_reset(&timer);
+  printf("TEST");  
+  cc26xx_uart_set_input(serial_line_input_byte);
+  for (;;){
+  PROCESS_YIELD();
+  if (ev == serial_line_event_message)
+  {
+    printf("received line: %s\n",(char *)data);
   }
-
+  }
   PROCESS_END();
 }
 /*---------------------------------------------------------------------------*/

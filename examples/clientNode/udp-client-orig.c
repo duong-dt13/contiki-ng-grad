@@ -34,10 +34,12 @@
 
 static struct simple_udp_connection udp_conn;
 static uint32_t rx_count = 0;
+char buf[15];
 
 /*---------------------------------------------------------------------------*/
 PROCESS(udp_client_process, "UDP client");
-AUTOSTART_PROCESSES(&udp_client_process);
+PROCESS(read_data, "READ DATA");
+AUTOSTART_PROCESSES(&read_data,&udp_client_process);
 /*---------------------------------------------------------------------------*/
 static void
 udp_rx_callback(struct simple_udp_connection *c,
@@ -58,9 +60,25 @@ udp_rx_callback(struct simple_udp_connection *c,
   rx_count++;
 }
 /*---------------------------------------------------------------------------*/
+PROCESS_THREAD(read_data, ev, data)
+{
+  PROCESS_BEGIN();
+  cc26xx_uart_set_input(serial_line_input_byte);
+  for(;;){
+  PROCESS_YIELD();
+      if (ev == serial_line_event_message)
+      {
+       //   printf("received line: %s\n",(char *)data);
+          sprintf(buf, "%s", (char *)data);
+        //  printf("buf la %s", buf);
+        } 
+        }
+        PROCESS_END();
+        }
 PROCESS_THREAD(udp_client_process, ev, data)
 {
   static struct etimer periodic_timer;
+  static char str[32];
   uip_ipaddr_t dest_ipaddr;
   static uint32_t tx_count;
   static uint32_t missed_tx_count;
@@ -83,27 +101,24 @@ PROCESS_THREAD(udp_client_process, ev, data)
         LOG_INFO("Tx/Rx/MissedTx: %" PRIu32 "/%" PRIu32 "/%" PRIu32 "\n",
                  tx_count, rx_count, missed_tx_count);
       }
-    cc26xx_uart_set_input(serial_line_input_byte); 
-    char buf[15];
-     for (;;){
-          PROCESS_YIELD();
-      if (ev == serial_line_event_message)
-  {
-    printf("received line: %s\n",(char *)data);
-    sprintf(buf,"%s", (char *)data);
-    printf("%s",buf);
-    simple_udp_sendto(&udp_conn, buf, strlen(buf), &dest_ipaddr);
-  }
+      /* Send to DAG root */
+      LOG_INFO("Sending request %"PRIu32" to ", tx_count);
+      LOG_INFO_6ADDR(&dest_ipaddr);
+      LOG_INFO_("\n");
+      snprintf(str, sizeof(str), "No. %" PRIu32 " %s", tx_count, buf);
+      simple_udp_sendto(&udp_conn, str, strlen(str), &dest_ipaddr);
       tx_count++;
-  
-    }} else {
+    } else {
       LOG_INFO("Not reachable yet\n");
       if(tx_count > 0) {
         missed_tx_count++;
       }
     }
+
+    /* Add some jitter */
+    etimer_set(&periodic_timer, SEND_INTERVAL
+      - CLOCK_SECOND + (random_rand() % (2 * CLOCK_SECOND)));
   }
-  
 
   PROCESS_END();
 }

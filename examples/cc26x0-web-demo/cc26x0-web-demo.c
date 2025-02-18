@@ -60,6 +60,7 @@
 #include "ti-lib.h"
 /*---------------------------------------------------------------------------*/
 PROCESS_NAME(cetic_6lbr_client_process);
+PROCESS(contiki_ng_br, "Contiki-NG Border Router");
 PROCESS(cc26xx_web_demo_process, "CC26XX Web Demo");
 /*---------------------------------------------------------------------------*/
 /*
@@ -1057,6 +1058,13 @@ PROCESS_THREAD(adc_process, ev, data)
 }
 #endif
 /*---------------------------------------------------------------------------*/
+PROCESS_THREAD(contiki_ng_br, ev, data)
+{
+  PROCESS_BEGIN();
+  NETSTACK_ROUTING.root_start();
+  LOG_INFO("Contiki-NG Border Router started\n");
+  PROCESS_END();
+}
 /**
  * @}
  */

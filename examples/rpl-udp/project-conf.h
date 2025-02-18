@@ -1,6 +1,5 @@
 /*
- * Copyright (c) 2017, RISE SICS
- * All rights reserved.
+ * Copyright (c) 2020, Institute of Electronics and Computer Science (EDI)
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -26,32 +25,26 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * This file is part of the Contiki operating system.
  *
+ * Author: Atis Elsts <atis.elsts@edi.lv>
  */
 
-#include "contiki.h"
+/* Logging */
+#define LOG_CONF_LEVEL_RPL                         LOG_LEVEL_INFO
+#define LOG_CONF_LEVEL_TCPIP                       LOG_LEVEL_WARN
+#define LOG_CONF_LEVEL_IPV6                        LOG_LEVEL_WARN
+#define LOG_CONF_LEVEL_6LOWPAN                     LOG_LEVEL_WARN
+#define LOG_CONF_LEVEL_MAC                         LOG_LEVEL_INFO
+#define TSCH_LOG_CONF_PER_SLOT                     0
 
-/* Log configuration */
-#include "sys/log.h"
-#define LOG_MODULE "RPL BR"
-#define LOG_LEVEL LOG_LEVEL_INFO
+/* Enable printing of packet counters */
+#define LINK_STATS_CONF_PACKET_COUNTERS          1
 
-/* Declare and auto-start this file's process */
-PROCESS(contiki_ng_br, "Contiki-NG Border Router");
-AUTOSTART_PROCESSES(&contiki_ng_br);
+/* Application settings */
+#define APP_SEND_INTERVAL_SEC 10
+#define APP_WARM_UP_PERIOD_SEC 120
 
-/*---------------------------------------------------------------------------*/
-PROCESS_THREAD(contiki_ng_br, ev, data)
-{
-  PROCESS_BEGIN();
-  NETSTACK_ROUTING.root_start();
-#if BORDER_ROUTER_CONF_WEBSERVER
-  PROCESS_NAME(webserver_nogui_process);
-  process_start(&webserver_nogui_process, NULL);
-#endif /* BORDER_ROUTER_CONF_WEBSERVER */
+#define SICSLOWPAN_CONF_FRAG 0 /* No fragmentation */
+#define UIP_CONF_BUFFER_SIZE 200
 
-  LOG_INFO("Contiki-NG Border Router started\n");
-
-  PROCESS_END();
-}
+#define UIP_CONF_STATISTICS 1
